@@ -3,7 +3,7 @@ from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovi
 from torch_geometric_temporal.signal import temporal_signal_split
 
 loader = ChickenpoxDatasetLoader()
-loader = EnglandCovidDatasetLoader()
+# loader = EnglandCovidDatasetLoader()
 
 dataset = loader.get_dataset()
 
@@ -34,6 +34,8 @@ model.train()
 for epoch in tqdm(range(200)):
     cost = 0
     for time, snapshot in enumerate(train_dataset):
+        print(snapshot)
+        break
         y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
         cost = cost + torch.mean((y_hat-snapshot.y)**2)
     cost = cost / (time+1)
