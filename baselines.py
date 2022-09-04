@@ -1,12 +1,22 @@
 
-from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader
-from torch_geometric_temporal.signal import temporal_signal_split
+from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader,PedalMeDatasetLoader
+from torch_geometric_temporal.signal import temporal_signal_split,StaticGraphTemporalSignal
+from torch_geometric.utils import negative_sampling
+from  utils import *
 
-loader = ChickenpoxDatasetLoader()
+from dataset import *
+import sys
+import os
+os.environ["http_proxy"] = "http://127.0.0.1:8081"
+# os.environ["https_proxy"] = "http://127.0.0.1:1231"
+# loader = ChickenpoxDatasetLoader()
 # loader = EnglandCovidDatasetLoader()
-
+# loader = PedalMeDatasetLoader()
+loader = LocalChickenpoxDatasetLoader()
 dataset = loader.get_dataset()
 
+data_preprocessing(dataset)
+# sys.exit()
 train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
 import torch
 import torch.nn.functional as F
@@ -24,8 +34,8 @@ class RecurrentGCN(torch.nn.Module):
         h = self.linear(h)
         return h
 from tqdm import tqdm
-
-model = RecurrentGCN(node_features = 4)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = RecurrentGCN(node_features = 4).to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
@@ -34,8 +44,10 @@ model.train()
 for epoch in tqdm(range(200)):
     cost = 0
     for time, snapshot in enumerate(train_dataset):
-        print(snapshot)
-        break
+        snapshot = snapshot.to(device)
+        # print(snapshot)
+        # print(negative_sampling(snapshot.edge_index))
+        # break
         y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
         cost = cost + torch.mean((y_hat-snapshot.y)**2)
     cost = cost / (time+1)

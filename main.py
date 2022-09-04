@@ -1,3 +1,7 @@
+import argparse
+import numpy as np
+import torch
+import random
 class MAML(object):
     def __init__(self):
         """
@@ -76,3 +80,26 @@ class MAML(object):
                 print 'Updated Model Parameter Theta\n'
                 print 'Sampling Next Batch of Tasks \n'
                 print '---------------------------------\n'
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--seed', type=int, default=42, help='Random seed.')
+    parser.add_argument('--epochs', type=int, default=1500, help='Number of epochs to train.')
+    parser.add_argument('--lr', type=float, default=0.01, help='learning rate.')
+    parser.add_argument('--wd1', type=float, default=0.01, help='weight decay (L2 loss on parameters).')
+    parser.add_argument('--wd2', type=float, default=5e-4, help='weight decay (L2 loss on parameters).')
+    parser.add_argument('--layer', type=int, default=64, help='Number of layers.')
+    parser.add_argument('--hidden', type=int, default=64, help='hidden dimensions.')
+    parser.add_argument('--dropout', type=float, default=0.6, help='Dropout rate (1 - keep probability).')
+    parser.add_argument('--patience', type=int, default=100, help='Patience')
+    parser.add_argument('--data', default='cora', help='dateset')
+    parser.add_argument('--dev', type=int, default=0, help='device id')
+    parser.add_argument('--alpha', type=float, default=0.1, help='alpha_l')
+    parser.add_argument('--lamda', type=float, default=0.5, help='lamda.')
+    parser.add_argument('--variant', action='store_true', default=False, help='GCN* model.')
+    parser.add_argument('--test', action='store_true', default=True, help='evaluation on test set.')
+    args = parser.parse_args()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    
