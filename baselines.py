@@ -7,15 +7,18 @@ from  utils import *
 from dataset import *
 import sys
 import os
-os.environ["http_proxy"] = "http://127.0.0.1:8081"
+# os.environ["http_proxy"] = "http://127.0.0.1:8081"
 # os.environ["https_proxy"] = "http://127.0.0.1:1231"
-# loader = ChickenpoxDatasetLoader()
+loader = ChickenpoxDatasetLoader()
 # loader = EnglandCovidDatasetLoader()
 # loader = PedalMeDatasetLoader()
-loader = LocalChickenpoxDatasetLoader()
+# loader = LocalChickenpoxDatasetLoader()
 dataset = loader.get_dataset()
-
+print(type(dataset))
 data_preprocessing(dataset)
+for data in dataset:
+    test(data)
+    sys.exit()
 # sys.exit()
 train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
 import torch
@@ -45,9 +48,9 @@ for epoch in tqdm(range(200)):
     cost = 0
     for time, snapshot in enumerate(train_dataset):
         snapshot = snapshot.to(device)
-        # print(snapshot)
+        print(type(snapshot))
         # print(negative_sampling(snapshot.edge_index))
-        # break
+        sys.exit()
         y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
         cost = cost + torch.mean((y_hat-snapshot.y)**2)
     cost = cost / (time+1)
