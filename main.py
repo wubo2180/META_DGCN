@@ -17,41 +17,43 @@ from model import metaDynamicGCN
 # os.environ["https_proxy"] = "http://127.0.0.1:1231"
 def compute_loss():
     pass
-def train (args,model,maml,optimizer):
+def train (args,model,maml,optimizer,train_dataset):
 
-    for iteration in range(args.epochs):
-        cost = 0
-        for time, snapshot in enumerate(train_dataset):
-            snapshot = snapshot.to(args.device)
-            print(type(snapshot))
-            # print(negative_sampling(snapshot.edge_index))
-            # sys.exit()
-            embedding = model(snapshot)
-            cost = cost + torch.mean((y_hat-snapshot.y)**2)
-        cost = cost / (time+1)
-        cost.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-        opt.zero_grad()
-        task_model = maml.clone()  # torch.clone() for nn.Modules
-        adaptation_loss = compute_loss(task_model)
-        task_model.adapt(adaptation_loss)  # computes gradient, update task_model in-place
-        evaluation_loss = compute_loss(task_model)
-        evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
-        opt.step()
+    
+    cost = 0
+    for time, snapshot in enumerate(train_dataset):
+        snapshot = snapshot.to(args.device)
+        embedding = model(snapshot)
+        cost = cost + torch.mean((y_hat-snapshot.y)**2)
+    cost = cost / (time+1)
+    cost.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    opt.zero_grad()
+    task_model = maml.clone()  # torch.clone() for nn.Modules
+    adaptation_loss = compute_loss(task_model)
+    task_model.adapt(adaptation_loss)  # computes gradient, update task_model in-place
+    evaluation_loss = compute_loss(task_model)
+    evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
+    opt.step()
+def eval():
+    pass
 def main(args):
     
     if args.dataset == 'Chickenpox':
         loader = ChickenpoxDatasetLoader()
     elif args.dataset == 'EnglandCovid':
         loader = EnglandCovidDatasetLoader()
+    dataset = loader.get_dataset()
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)        
     model = metaDynamicGCN(args)
     maml = l2l.algorithms.MAML(model, lr=args.update_lr)
     optimizer = optim.Adam(model.parameters(), lr=args.meta_lr, weight_decay=args.decay)
-    train(args,model,maml,optimizer)
-    # opt = torch.optim.Adam(maml.parameters(), lr=args.meta_lr)
+    for epoch in range(args.epochs):
+        print("====epoch " + str(epoch)+'====')
+        train(args, model, maml, optimizer, train_dataset)
+    eval()
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, help='epoch number', default=10)
     parser.add_argument('--n_way', type=int, help='n way', default=3)
@@ -64,11 +66,8 @@ if __name__ == '__main__':
     parser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
     parser.add_argument('--input_dim', type=int, help='input feature dim', default=4)
     parser.add_argument('--hidden_dim', type=int, help='hidden dim', default=64)
-    parser.add_argument('--attention_size', type=int, help='dim of attention_size', default=32)
-    parser.add_argument("--data_dir", default=None, type=str, required=False, help="The input data dir.")
+
     parser.add_argument("--no_finetune", default=True, type=str, required=False, help="no finetune mode.")
-    parser.add_argument("--task_setup", default='Disjoint', type=str, required=False, help="Select from Disjoint or Shared Setup. For Disjoint-Label, single/multiple graphs are both considered.")
-    parser.add_argument("--method", default='G-Meta', type=str, required=False, help="Use G-Meta")
     parser.add_argument('--task_n', type=int, help='task number', default=1)
     parser.add_argument("--task_mode", default='False', type=str, required=False, help="For Evaluating on Tasks")
     parser.add_argument("--val_result_report_steps", default=100, type=int, required=False, help="validation report")
