@@ -40,7 +40,7 @@ def test(data,args):
     data.neg_sup_edge_index = neg_edges[:, :args.n_way * args.k_spt]
     data.pos_que_edge_index = pos_edges[:, args.n_way * args.k_spt:]
     data.neg_que_edge_index = neg_edges[:, args.n_way * args.k_spt:]
-    data.x = aug_random_mask(data.x)
+    data.aug_feature = aug_random_mask(data.x)
     return data
 
 def aug_random_mask(input_feature, drop_percent=0.2,dim_drop=0.5):

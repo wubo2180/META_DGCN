@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import torch
+import torch.nn as nn
 import random
 import learn2learn as l2l
 from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader,PedalMeDatasetLoader
@@ -15,50 +16,64 @@ from tqdm import tqdm
 from model import metaDynamicGCN
 # os.environ["http_proxy"] = "http://127.0.0.1:8081"
 # os.environ["https_proxy"] = "http://127.0.0.1:1231"
-def compute_loss():
-    pass
-def train (args,model,maml,optimizer,train_dataset):
+def compute_space_loss(embedding,snapshot):
+    criterion_space = nn.BCEWithLogitsLoss()
+    return criterion_space(embedding,)
 
+def compute_temporal_loss(embedding,snapshot):
+    criterion_temporal = nn.MSELoss()
+    return criterion_temporal(embedding,snapshot.y)
+
+def train (args,model,maml,optimizer,train_dataset):
     
+    task_model = maml.clone()
     cost = 0
     for time, snapshot in enumerate(train_dataset):
         snapshot = snapshot.to(args.device)
         embedding = model(snapshot)
+        for i in range(args.update_sapce_step):
+            adaptation_space_loss = compute_space_loss(embedding,snapshot)
+            task_model.adapt(adaptation_space_loss)
+        for i in range(args.update_temporal_step):
+            adaptation_temporal_loss = compute_temporal_loss(embedding,snapshot)
+            task_model.adapt(adaptation_temporal_loss)
+    optimizer.zero_grad()
+    evaluation_loss = compute_space_loss(embedding,snapshot)+compute_temporal_loss(embedding,snapshot)
+    evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
+    optimizer.step()
+def eval(model,test_dataset):
+    model.eval()
+    cost = 0
+    for time, snapshot in enumerate(test_dataset):
+        y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
         cost = cost + torch.mean((y_hat-snapshot.y)**2)
     cost = cost / (time+1)
-    cost.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-    opt.zero_grad()
-    task_model = maml.clone()  # torch.clone() for nn.Modules
-    adaptation_loss = compute_loss(task_model)
-    task_model.adapt(adaptation_loss)  # computes gradient, update task_model in-place
-    evaluation_loss = compute_loss(task_model)
-    evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
-    opt.step()
-def eval():
-    pass
+    cost = cost.item()
+    print("MSE: {:.4f}".format(cost))
 def main(args):
     
     if args.dataset == 'Chickenpox':
         loader = ChickenpoxDatasetLoader()
     elif args.dataset == 'EnglandCovid':
         loader = EnglandCovidDatasetLoader()
+    elif args.dataset == 'PedalMeDataset':
+        loader = PedalMeDatasetLoader()
     dataset = loader.get_dataset()
-    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)        
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
     model = metaDynamicGCN(args)
     maml = l2l.algorithms.MAML(model, lr=args.update_lr)
     optimizer = optim.Adam(model.parameters(), lr=args.meta_lr, weight_decay=args.decay)
     for epoch in range(args.epochs):
         print("====epoch " + str(epoch)+'====')
         train(args, model, maml, optimizer, train_dataset)
-    eval()
+    eval(model,test_dataset)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, help='epoch number', default=10)
     parser.add_argument('--n_way', type=int, help='n way', default=3)
-    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=3)
-    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=24)
+    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=10)
+    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
     parser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-3)
     parser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-3)
@@ -78,6 +93,7 @@ if __name__ == '__main__':
     parser.add_argument("--h", default=2, type=int, required=False, help="neighborhood size")
     parser.add_argument('--sample_nodes', type=int, help='sample nodes if above this number of nodes', default=1000)
     parser.add_argument('--seed', type=int, default=42, help='Random seed.')
+    parser.add_argument('--dataset', type=str, default='PedalMeDataset', help='dataset.')
     args = parser.parse_args()
     
     random.seed(args.seed)
