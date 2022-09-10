@@ -37,10 +37,10 @@ def train (args,model,maml,optimizer,train_dataset):
         for i in range(args.update_temporal_step):
             adaptation_temporal_loss = compute_temporal_loss(embedding,snapshot)
             task_model.adapt(adaptation_temporal_loss)
-    optimizer.zero_grad()
-    evaluation_loss = compute_space_loss(embedding,snapshot)+compute_temporal_loss(embedding,snapshot)
-    evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
-    optimizer.step()
+        optimizer.zero_grad()
+        evaluation_loss = compute_space_loss(embedding,snapshot)+compute_temporal_loss(embedding,snapshot)
+        evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
+        optimizer.step()
 def eval(model,test_dataset):
     model.eval()
     cost = 0
