@@ -4,24 +4,26 @@ import torch
 import numpy as np
 import random
 import copy
-def data_preprocessing(dataset):
+def data_preprocessing(dataset,args):
     data_list = [] 
     for time, snapshot in enumerate(dataset):
         # print(negative_sampling(snapshot.edge_index))
-        pass
+        data_list.append(task_construct(snapshot,args))
     return data_list
 
 
-def test(data,args):
+def task_construct(data,args):
     num_nodes = data.num_nodes
     num_edges = data.num_edges
 
     # sample support set and query set for each data/task/graph
-    num_sampled_edges = args.n_way * (args.k_spt + args.k_qry)
+    # num_sampled_edges = args.n_way * (args.k_spt + args.k_qry)
+    num_sampled_edges = args.k_spt + args.k_qry
     perm = np.random.randint(num_edges, size=num_sampled_edges)
     pos_edges = data.edge_index[:, perm]
 
     x = 1 - 1.1 * (data.edge_index.size(1) / (num_nodes * num_nodes) )
+    
     if x != 0:
         alpha = 1 / (1 - 1.1 * (data.edge_index.size(1) / (num_nodes * num_nodes) ))
     else:
@@ -36,10 +38,15 @@ def test(data,args):
         perm = np.random.randint(cur_num_neg, size=num_sampled_edges)
         neg_edges = neg_edges[:, perm]
 
-    data.pos_sup_edge_index = pos_edges[:, :args.n_way * args.k_spt]
-    data.neg_sup_edge_index = neg_edges[:, :args.n_way * args.k_spt]
-    data.pos_que_edge_index = pos_edges[:, args.n_way * args.k_spt:]
-    data.neg_que_edge_index = neg_edges[:, args.n_way * args.k_spt:]
+    data.pos_sup_edge_index = pos_edges[:, :args.k_spt]
+    data.neg_sup_edge_index = neg_edges[:, :args.k_spt]
+    data.pos_que_edge_index = pos_edges[:, args.k_qry:]
+    data.neg_que_edge_index = neg_edges[:, args.k_qry:]
+    
+    num_sampled_nodes = args.k_spt + args.k_qry
+    perm = np.random.randint(num_nodes, size=num_sampled_nodes)
+    data.temporal_sup_index = perm[:args.k_spt]
+    data.temporal_que_index = perm[args.k_qry:]
     data.aug_feature = aug_random_mask(data.x)
     return data
 

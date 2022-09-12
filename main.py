@@ -16,31 +16,55 @@ from tqdm import tqdm
 from model import metaDynamicGCN
 # os.environ["http_proxy"] = "http://127.0.0.1:8081"
 # os.environ["https_proxy"] = "http://127.0.0.1:1231"
-def compute_space_loss(embedding,snapshot):
+def compute_space_loss(embedding,index_set):
     criterion_space = nn.BCEWithLogitsLoss()
-    return criterion_space(embedding,)
+    pos_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
+    neg_score = torch.sum(embedding[index_set[0]], embedding[index_set[1]], dim=1)
+    loss = criterion_space(pos_score, torch.ones_like(pos_score)) + \
+           criterion_space(neg_score, torch.zeros_like(neg_score))
+    return loss
 
-def compute_temporal_loss(embedding,snapshot):
+def compute_temporal_loss(embedding,index_set,snapshot):
     criterion_temporal = nn.MSELoss()
-    return criterion_temporal(embedding,snapshot.y)
+    
+    y = snapshot.y[index_set]
+    embedding = torch.sigmoid(embedding[index_set])
+    loss = criterion_temporal (embedding,y)
+    return loss
 
 def train (args,model,maml,optimizer,train_dataset):
     
-    task_model = maml.clone()
+    
     cost = 0
     for time, snapshot in enumerate(train_dataset):
+
         snapshot = snapshot.to(args.device)
         embedding = model(snapshot)
+        task_model = maml.clone()
+        query_space_loss, query_temporal_loss =0.0,0.0
+        
+        space_suppport_set = snapshot.pos_sup_edge_index
+        space_query_set = snapshot.neg_sup_edge_index
+        temporal_suppport_set = snapshot.temporal_que_index
+        temporal_query_set = snapshot.temporal_que_index
+        
         for i in range(args.update_sapce_step):
-            adaptation_space_loss = compute_space_loss(embedding,snapshot)
-            task_model.adapt(adaptation_space_loss)
+            support_space_loss = compute_space_loss(embedding,space_suppport_set)
+            task_model.adapt(support_space_loss)
+            query_space_loss += compute_space_loss(embedding,space_query_set)
+
         for i in range(args.update_temporal_step):
-            adaptation_temporal_loss = compute_temporal_loss(embedding,snapshot)
-            task_model.adapt(adaptation_temporal_loss)
+
+            suppport_temporal_loss = compute_temporal_loss(embedding,temporal_suppport_set,snapshot)
+            task_model.adapt(suppport_temporal_loss)
+            query_temporal_loss += compute_space_loss(embedding,temporal_query_set,snapshot)
+
         optimizer.zero_grad()
-        evaluation_loss = compute_space_loss(embedding,snapshot)+compute_temporal_loss(embedding,snapshot)
+
+        evaluation_loss = (query_space_loss + query_temporal_loss)/ 2
         evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
         optimizer.step()
+
 def eval(model,test_dataset):
     model.eval()
     cost = 0
@@ -50,6 +74,7 @@ def eval(model,test_dataset):
     cost = cost / (time+1)
     cost = cost.item()
     print("MSE: {:.4f}".format(cost))
+
 def main(args):
     
     if args.dataset == 'Chickenpox':
@@ -60,13 +85,14 @@ def main(args):
         loader = PedalMeDatasetLoader()
     dataset = loader.get_dataset()
     train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
-    model = metaDynamicGCN(args)
+    train_dataset = data_preprocessing(train_dataset,args)
+    model = metaDynamicGCN(args).to(device)
     maml = l2l.algorithms.MAML(model, lr=args.update_lr)
-    optimizer = optim.Adam(model.parameters(), lr=args.meta_lr, weight_decay=args.decay)
+    optimizer = optim.Adam(maml.parameters(), lr=args.meta_lr, weight_decay=args.decay)
     for epoch in range(args.epochs):
         print("====epoch " + str(epoch)+'====')
         train(args, model, maml, optimizer, train_dataset)
-    eval(model,test_dataset)
+    eval(maml,test_dataset)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -74,11 +100,11 @@ if __name__ == '__main__':
     parser.add_argument('--n_way', type=int, help='n way', default=3)
     parser.add_argument('--k_spt', type=int, help='k shot for support set', default=10)
     parser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
-    parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
+    # parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
     parser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-3)
     parser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-3)
-    parser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
-    parser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
+    parser.add_argument('--update_sapce_step', type=int, help='task-level inner update steps', default=5)
+    parser.add_argument('--update_temporal_step', type=int, help='update steps for finetunning', default=10)
     parser.add_argument('--input_dim', type=int, help='input feature dim', default=4)
     parser.add_argument('--hidden_dim', type=int, help='hidden dim', default=64)
 
@@ -93,13 +119,17 @@ if __name__ == '__main__':
     parser.add_argument("--h", default=2, type=int, required=False, help="neighborhood size")
     parser.add_argument('--sample_nodes', type=int, help='sample nodes if above this number of nodes', default=1000)
     parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-    parser.add_argument('--dataset', type=str, default='PedalMeDataset', help='dataset.')
+    parser.add_argument('--dataset', type=str, default='Chickenpox', help='dataset.')
+    parser.add_argument('--device', type=int, default=0,help='which gpu to use if any (default: 0)')
     args = parser.parse_args()
     
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
+    device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(0)
+    args.device = device
     main(args)
 
 # def sample_points():
