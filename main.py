@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import random
 import learn2learn as l2l
-from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader,PedalMeDatasetLoader
+from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader,PedalMeDatasetLoader,WikiMathsDatasetLoader
 from torch_geometric_temporal.signal import temporal_signal_split,StaticGraphTemporalSignal
 from torch_geometric.utils import negative_sampling
 from  utils import *
@@ -16,27 +16,30 @@ from tqdm import tqdm
 from model import metaDynamicGCN
 # os.environ["http_proxy"] = "http://127.0.0.1:8081"
 # os.environ["https_proxy"] = "http://127.0.0.1:1231"
-def compute_space_loss(embedding,index_set):
-    criterion_space = nn.BCEWithLogitsLoss()
+
+
+def compute_space_loss(embedding, index_set, criterion_space):
+    
     pos_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
-    neg_score = torch.sum(embedding[index_set[0]], embedding[index_set[1]], dim=1)
+    neg_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
     loss = criterion_space(pos_score, torch.ones_like(pos_score)) + \
            criterion_space(neg_score, torch.zeros_like(neg_score))
     return loss
 
-def compute_temporal_loss(embedding,index_set,snapshot):
-    criterion_temporal = nn.MSELoss()
+def compute_temporal_loss(embedding, index_set, snapshot, criterion_temporal):
+    
     
     y = snapshot.y[index_set]
-    embedding = torch.sigmoid(embedding[index_set])
-    loss = criterion_temporal (embedding,y)
+    # embedding = torch.sigmoid(embedding[index_set]).reshape(-1)
+    embedding = torch.relu(embedding[index_set]).reshape(-1)
+    loss = criterion_temporal (embedding, y)
     return loss
 
-def train (args,model,maml,optimizer,train_dataset):
+def train (args, model, maml, optimizer, train_dataset, criterion_space, criterion_temporal):
     
-    
+
     cost = 0
-    for time, snapshot in enumerate(train_dataset):
+    for time, snapshot in enumerate(tqdm(train_dataset,ncols=100)):
 
         snapshot = snapshot.to(args.device)
         embedding = model(snapshot)
@@ -49,27 +52,31 @@ def train (args,model,maml,optimizer,train_dataset):
         temporal_query_set = snapshot.temporal_que_index
         
         for i in range(args.update_sapce_step):
-            support_space_loss = compute_space_loss(embedding,space_suppport_set)
-            task_model.adapt(support_space_loss)
-            query_space_loss += compute_space_loss(embedding,space_query_set)
+            support_space_loss = compute_space_loss(embedding, space_suppport_set, criterion_space)
+            # print(support_space_loss)
+            task_model.adapt(support_space_loss, allow_unused=True, allow_nograd = True)
+            query_space_loss += compute_space_loss(embedding, space_query_set, criterion_space)
 
         for i in range(args.update_temporal_step):
 
-            suppport_temporal_loss = compute_temporal_loss(embedding,temporal_suppport_set,snapshot)
-            task_model.adapt(suppport_temporal_loss)
-            query_temporal_loss += compute_space_loss(embedding,temporal_query_set,snapshot)
+            suppport_temporal_loss = compute_temporal_loss(embedding,temporal_suppport_set,snapshot,criterion_temporal)
+            task_model.adapt(suppport_temporal_loss, allow_unused=True, allow_nograd = True)
+            query_temporal_loss += compute_temporal_loss(embedding,temporal_query_set,snapshot,criterion_temporal)
 
         optimizer.zero_grad()
 
-        evaluation_loss = (query_space_loss + query_temporal_loss)/ 2
+        evaluation_loss = 0.5*query_space_loss + 0.5*query_temporal_loss
+        
         evaluation_loss.backward()  # gradients w.r.t. maml.parameters()
         optimizer.step()
+    print(evaluation_loss)
 
-def eval(model,test_dataset):
+def eval(args, model,test_dataset):
     model.eval()
     cost = 0
     for time, snapshot in enumerate(test_dataset):
-        y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
+        snapshot = snapshot.to(args.device)
+        y_hat = model(snapshot)
         cost = cost + torch.mean((y_hat-snapshot.y)**2)
     cost = cost / (time+1)
     cost = cost.item()
@@ -83,43 +90,43 @@ def main(args):
         loader = EnglandCovidDatasetLoader()
     elif args.dataset == 'PedalMeDataset':
         loader = PedalMeDatasetLoader()
+    elif args.dataset == 'WikiMathsDataset':
+        loader = WikiMathsDatasetLoader()
     dataset = loader.get_dataset()
-    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
-    train_dataset = data_preprocessing(train_dataset,args)
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=args.train_ratio)
+    train_dataset, args.input_dim = data_preprocessing(train_dataset,args)
+    # print(node)
     model = metaDynamicGCN(args).to(device)
     maml = l2l.algorithms.MAML(model, lr=args.update_lr)
     optimizer = optim.Adam(maml.parameters(), lr=args.meta_lr, weight_decay=args.decay)
+    criterion_space = nn.BCEWithLogitsLoss()
+    criterion_temporal = nn.MSELoss(reduction='mean')
     for epoch in range(args.epochs):
         print("====epoch " + str(epoch)+'====')
-        train(args, model, maml, optimizer, train_dataset)
-    eval(maml,test_dataset)
+        train(args, model, maml, optimizer, train_dataset, criterion_space, criterion_temporal)
+        eval(args, maml,test_dataset)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, help='epoch number', default=10)
+    parser.add_argument('--epochs', type=int, help='epoch number', default=50)
     parser.add_argument('--n_way', type=int, help='n way', default=3)
-    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=10)
-    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
+    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=60)
+    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=60)
     # parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
     parser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-3)
     parser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-3)
-    parser.add_argument('--update_sapce_step', type=int, help='task-level inner update steps', default=5)
-    parser.add_argument('--update_temporal_step', type=int, help='update steps for finetunning', default=10)
+    parser.add_argument('--update_sapce_step', type=int, help='task-level inner update steps', default=1)
+    parser.add_argument('--update_temporal_step', type=int, help='update steps for finetunning', default=1)
+    parser.add_argument('--decay', type=float, help='decay', default=1e-3)
+    parser.add_argument('--train_ratio', type=float, help='train_ratio', default=0.8)
     parser.add_argument('--input_dim', type=int, help='input feature dim', default=4)
-    parser.add_argument('--hidden_dim', type=int, help='hidden dim', default=64)
+    parser.add_argument('--hidden_dim', type=int, help='hidden dim', default=32)
+    parser.add_argument('--dropout', type=float, help='dropout', default=0.5)
 
-    parser.add_argument("--no_finetune", default=True, type=str, required=False, help="no finetune mode.")
-    parser.add_argument('--task_n', type=int, help='task number', default=1)
-    parser.add_argument("--task_mode", default='False', type=str, required=False, help="For Evaluating on Tasks")
-    parser.add_argument("--val_result_report_steps", default=100, type=int, required=False, help="validation report")
-    parser.add_argument("--train_result_report_steps", default=30, type=int, required=False, help="training report")
     parser.add_argument("--num_workers", default=0, type=int, required=False, help="num of workers")
-    parser.add_argument("--batchsz", default=1000, type=int, required=False, help="batch size")
-    parser.add_argument("--link_pred_mode", default='False', type=str, required=False, help="For Link Prediction")
-    parser.add_argument("--h", default=2, type=int, required=False, help="neighborhood size")
-    parser.add_argument('--sample_nodes', type=int, help='sample nodes if above this number of nodes', default=1000)
+
     parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-    parser.add_argument('--dataset', type=str, default='Chickenpox', help='dataset.')
+    parser.add_argument('--dataset', type=str, default='WikiMathsDataset', help='dataset.')
     parser.add_argument('--device', type=int, default=0,help='which gpu to use if any (default: 0)')
     args = parser.parse_args()
     
@@ -131,7 +138,15 @@ if __name__ == '__main__':
         torch.cuda.manual_seed_all(0)
     args.device = device
     main(args)
-
+# parser.add_argument("--no_finetune", default=True, type=str, required=False, help="no finetune mode.")
+# parser.add_argument('--task_n', type=int, help='task number', default=1)
+# parser.add_argument("--task_mode", default='False', type=str, required=False, help="For Evaluating on Tasks")
+# parser.add_argument("--val_result_report_steps", default=100, type=int, required=False, help="validation report")
+# parser.add_argument("--train_result_report_steps", default=30, type=int, required=False, help="training report")
+# parser.add_argument("--batchsz", default=1000, type=int, required=False, help="batch size")
+# parser.add_argument("--link_pred_mode", default='False', type=str, required=False, help="For Link Prediction")
+# parser.add_argument("--h", default=2, type=int, required=False, help="neighborhood size")
+# parser.add_argument('--sample_nodes', type=int, help='sample nodes if above this number of nodes', default=1000)
 # def sample_points():
 #     pass
 # class MAML(object):

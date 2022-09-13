@@ -9,13 +9,14 @@ def data_preprocessing(dataset,args):
     for time, snapshot in enumerate(dataset):
         # print(negative_sampling(snapshot.edge_index))
         data_list.append(task_construct(snapshot,args))
-    return data_list
+    # print(len(data_list))
+    return data_list,snapshot.x.shape[1]
 
 
 def task_construct(data,args):
     num_nodes = data.num_nodes
     num_edges = data.num_edges
-
+    
     # sample support set and query set for each data/task/graph
     # num_sampled_edges = args.n_way * (args.k_spt + args.k_qry)
     num_sampled_edges = args.k_spt + args.k_qry
@@ -53,7 +54,7 @@ def task_construct(data,args):
 def aug_random_mask(input_feature, drop_percent=0.2,dim_drop=0.5):
     
     node_num, dim = input_feature.shape
-    print(dim)
+    # print(dim)
 
     mask_num = int(node_num * drop_percent)
     mask_dim = int(dim * dim_drop)
@@ -61,7 +62,7 @@ def aug_random_mask(input_feature, drop_percent=0.2,dim_drop=0.5):
     node_idx = [i for i in range(node_num)]
     mask_idx = random.sample(node_idx, mask_num)
     dim_idx = [i for i in range(dim)]
-    print(mask_idx,dim_idx,mask_dim)
+    # print(mask_idx,dim_idx,mask_dim)
     # aug_feature = copy.deepcopy(input_feature)
     aug_feature = input_feature
     zeros = torch.zeros_like(aug_feature[0][0])
