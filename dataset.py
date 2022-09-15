@@ -13,6 +13,7 @@ class LocalChickenpoxDatasetLoader(ChickenpoxDatasetLoader):
     #         pass
     
         # print(self._dataset)
+
 if __name__=='__main__':
     loader = LocalChickenpoxDatasetLoader()
     loader.get_dataset()
