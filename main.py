@@ -9,17 +9,11 @@ from torch_geometric_temporal.signal import temporal_signal_split,StaticGraphTem
 from torch_geometric.utils import negative_sampling
 from  utils import *
 import torch.optim as optim
-from dataset import *
-import sys
-import os
 from tqdm import tqdm
 from model import metaDynamicGCN
-# os.environ["http_proxy"] = "http://127.0.0.1:8081"
-# os.environ["https_proxy"] = "http://127.0.0.1:1231"
-
 
 def compute_space_loss(embedding, index_set, criterion_space):
-    
+    # embedding = torch.relu(embedding)
     pos_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
     neg_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
     loss = criterion_space(pos_score, torch.ones_like(pos_score)) + \
@@ -110,11 +104,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, help='epoch number', default=50)
     parser.add_argument('--n_way', type=int, help='n way', default=3)
-    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=60)
-    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=60)
+    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=200)
+    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=200)
     # parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
-    parser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-3)
-    parser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-3)
+    parser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-2)
+    parser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-2)
     parser.add_argument('--update_sapce_step', type=int, help='task-level inner update steps', default=1)
     parser.add_argument('--update_temporal_step', type=int, help='update steps for finetunning', default=1)
     parser.add_argument('--decay', type=float, help='decay', default=1e-3)
