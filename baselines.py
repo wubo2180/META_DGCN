@@ -35,14 +35,12 @@ def train(args, model,train_dataset, optimizer):
         optimizer.step()
         # optimizer.zero_grad()
 def main(args):
-    if args.dataset == 'Chickenpox':
-        loader = ChickenpoxDatasetLoader()
-    elif args.dataset == 'EnglandCovid':
-        loader = LocalEnglandCovidDatasetLoader()
+    if args.dataset == 'EnglandCovid':
+        loader =EnglandCovidDatasetLoader()
     elif args.dataset == 'PedalMe':
-        loader = LocalPedalMeDatasetLoader()
+        loader = PedalMeDatasetLoader()
     elif args.dataset == 'WikiMaths':
-        loader = LocalWikiMathsDatasetLoader()
+        loader = WikiMathsDatasetLoader()
     dataset = loader.get_dataset()
     for time, data in enumerate(dataset):
         args.input_dim, args.num_nodes = data.x.shape[1], data.x.shape[0]

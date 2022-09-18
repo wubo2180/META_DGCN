@@ -11,11 +11,7 @@ from  utils import *
 import torch.optim as optim
 from tqdm import tqdm
 from model import metaDynamicGCN
-<<<<<<< HEAD
-from dataset import *
-=======
 from datasets import *
->>>>>>> 3e32e05b16b1d61a8edbf837e2a8c4d962dd6f2d
 def compute_space_loss(embedding, index_set, criterion_space):
     # embedding = torch.relu(embedding)
     pos_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
@@ -85,14 +81,9 @@ def main(args):
         loader = EnglandCovidDatasetLoader()
     elif args.dataset == 'PedalMe':
         loader = PedalMeDatasetLoader()
-<<<<<<< HEAD
-    elif args.dataset == 'WikiMathsDataset':
-        loader = LocalWikiMathsDatasetLoader()
-=======
     elif args.dataset == 'WikiMaths':
         loader = WikiMathsDatasetLoader()
 
->>>>>>> 3e32e05b16b1d61a8edbf837e2a8c4d962dd6f2d
     dataset = loader.get_dataset()
     train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=args.train_ratio)
     train_dataset, args.num_nodes, args.input_dim = data_preprocessing(train_dataset,args)
@@ -110,11 +101,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, help='epoch number', default=50)
-<<<<<<< HEAD
-    parser.add_argument('--n_way', type=int, help='n way', default=3)
-=======
     parser.add_argument('--num_nodes', type=int, help='graph nodes')
->>>>>>> 3e32e05b16b1d61a8edbf837e2a8c4d962dd6f2d
     parser.add_argument('--k_spt', type=int, help='k shot for support set', default=100)
     parser.add_argument('--k_qry', type=int, help='k shot for query set', default=100)
     # parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)

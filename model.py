@@ -3,20 +3,11 @@ from torch_geometric_temporal.nn import DCRNN,GConvGRU,GConvLSTM,EvolveGCNH,Evol
 from torch_geometric.nn import GCNConv
 import torch.nn as nn
 import torch.nn.functional as F
-<<<<<<< HEAD
-from layer import GCNGRU
-class metaDynamicGCN(nn.Module):
-    def __init__(self,args) -> None:
-        super().__init__()
-        # self.encoder = DCRNN(in_channels=args.input_dim, out_channels=args.hidden_dim,K=2)
-        self.encoder = GCNGRU(args.input_dim, args.hidden_dim)
-=======
 from layers import *
 class metaDynamicGCN(nn.Module):
     def __init__(self,args) -> None:
         super().__init__()
         self.encoder = GCNGRU(args.input_dim,args.hidden_dim)
->>>>>>> 3e32e05b16b1d61a8edbf837e2a8c4d962dd6f2d
         self.linear = nn.Linear(args.hidden_dim, 1)
         self.dropout = nn.Dropout(p=args.dropout)
         self.relu = nn.ReLU()
