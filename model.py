@@ -17,7 +17,7 @@ class metaDynamicGCN(nn.Module):
         h = self.relu(h)
         h = self.linear(h)
         return h
-
+##ss
 class RecurrentGCN(nn.Module):
     def __init__(self, args):
         super(RecurrentGCN, self).__init__()
