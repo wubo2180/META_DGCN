@@ -131,4 +131,5 @@ if __name__ == '__main__':
     args.device = device
     print(args) ###ddd
     
+    print(args) ###dsdasdas
     main(args)
