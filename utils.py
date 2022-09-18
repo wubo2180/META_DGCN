@@ -3,14 +3,13 @@ from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 import torch
 import numpy as np
 import random
-import copy
 def data_preprocessing(dataset,args):
     data_list = [] 
     for time, snapshot in enumerate(dataset):
         # print(negative_sampling(snapshot.edge_index))
         data_list.append(task_construct(snapshot,args))
     # print(len(data_list))
-    return data_list,snapshot.x.shape[1]
+    return data_list,snapshot.x.shape[0],snapshot.x.shape[1]
 
 
 def task_construct(data,args):
@@ -48,7 +47,7 @@ def task_construct(data,args):
     perm = np.random.randint(num_nodes, size=num_sampled_nodes)
     data.temporal_sup_index = perm[:args.k_spt]
     data.temporal_que_index = perm[args.k_qry:]
-    data.aug_feature = aug_random_mask(data.x)
+    # data.aug_feature = aug_random_mask(data.x)
     return data
 
 def aug_random_mask(input_feature, drop_percent=0.2,dim_drop=0.5):

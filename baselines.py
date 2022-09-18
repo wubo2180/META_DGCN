@@ -9,7 +9,6 @@ import torch
 import argparse
 import numpy as np
 from model import RecurrentGCN
-from dataset import *
 def eval(args,model,test_dataset):
     model.eval()
     cost = 0
@@ -37,8 +36,7 @@ def train(args, model,train_dataset, optimizer):
         # optimizer.zero_grad()
 def main(args):
     if args.dataset == 'Chickenpox':
-        # loader = ChickenpoxDatasetLoader()
-        loader = LocalChickenpoxDatasetLoader()
+        loader = ChickenpoxDatasetLoader()
     elif args.dataset == 'EnglandCovid':
         loader = LocalEnglandCovidDatasetLoader()
     elif args.dataset == 'PedalMe':
@@ -47,7 +45,7 @@ def main(args):
         loader = LocalWikiMathsDatasetLoader()
     dataset = loader.get_dataset()
     for time, data in enumerate(dataset):
-        args.input_dim = data.x.shape[1]
+        args.input_dim, args.num_nodes = data.x.shape[1], data.x.shape[0]
         break
     train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.8)
 
@@ -71,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_workers", default=0, type=int, required=False, help="num of workers")
     parser.add_argument('--seed', type=int, default=42, help='Random seed.')
     parser.add_argument('--dataset', type=str, default='WikiMaths', help='dataset.')
-    parser.add_argument('--layer_mode', type=str, default='1', help='layer mode.')
+    parser.add_argument('--layer_mode', type=str, default='0', help='layer mode.')
     parser.add_argument('--device', type=int, default=0,help='which gpu to use if any (default: 0)')
     args = parser.parse_args()
     random.seed(args.seed)
