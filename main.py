@@ -11,7 +11,7 @@ from  utils import *
 import torch.optim as optim
 from tqdm import tqdm
 from model import metaDynamicGCN
-
+from dataset import *
 def compute_space_loss(embedding, index_set, criterion_space):
     # embedding = torch.relu(embedding)
     pos_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
@@ -85,7 +85,7 @@ def main(args):
     elif args.dataset == 'PedalMeDataset':
         loader = PedalMeDatasetLoader()
     elif args.dataset == 'WikiMathsDataset':
-        loader = WikiMathsDatasetLoader()
+        loader = LocalWikiMathsDatasetLoader()
     dataset = loader.get_dataset()
     train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=args.train_ratio)
     train_dataset, args.input_dim = data_preprocessing(train_dataset,args)
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, help='epoch number', default=50)
     parser.add_argument('--n_way', type=int, help='n way', default=3)
-    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=200)
-    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=200)
+    parser.add_argument('--k_spt', type=int, help='k shot for support set', default=100)
+    parser.add_argument('--k_qry', type=int, help='k shot for query set', default=100)
     # parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
     parser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-2)
     parser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=1e-2)
