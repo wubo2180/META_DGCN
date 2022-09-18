@@ -129,5 +129,5 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     args.device = device
-    print(args)
+    print(args) ###dsdasdas
     main(args)
