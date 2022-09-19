@@ -132,5 +132,5 @@ if __name__ == '__main__':
     print(args) ###ddd
     
     print(args) ###dsdasdas
-    main(args)
+    #main(args)
     #222222
