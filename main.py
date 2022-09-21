@@ -101,7 +101,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, help='epoch number', default=50)
-    parser.add_argument('--num_nodes', type=int, help='graph nodes')
+    parser.add_argument('--num_nodes', type=int, help='number of nodes')
     parser.add_argument('--k_spt', type=int, help='k shot for support set', default=100)
     parser.add_argument('--k_qry', type=int, help='k shot for query set', default=100)
     # parser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=8)
@@ -129,8 +129,6 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
     args.device = device
-    print(args) ###ddd
-    #11111
-    print(args) ###dsdasdas
-    #main(args)
-    #222222
+    print(args) 
+    main(args)
+
