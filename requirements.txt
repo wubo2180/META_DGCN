@@ -1,0 +1,4 @@
+learn2learn==0.1.7
+pyg==2.0.4
+pytorch==1.10.0
+torch-geometric-temporal==0.53.0
