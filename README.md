@@ -1,5 +1,5 @@
 # Enhancing Dynamic GCN for Node Attribute Forecasting with Meta Spatial-temporal Learning
-This repository is the official implementation of paper [Enhancing Dynamic GCN for Node Attribute Forecasting with Meta Spatial-temporal Learning](https://yuanfulu.github.io/publication/AAAI-L2PGNN.pdf)
+This repository is the official implementation of paper Enhancing Dynamic GCN for Node Attribute Forecasting with Meta Spatial-temporal Learning
 
 ## Requirements
 
