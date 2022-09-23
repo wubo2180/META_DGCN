@@ -4,14 +4,14 @@ import torch
 import torch.nn as nn
 import random
 import learn2learn as l2l
-from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader,PedalMeDatasetLoader,WikiMathsDatasetLoader,PemsBayDatasetLoader,WindmillOutputLargeDatasetLoader
+from torch_geometric_temporal.dataset import ChickenpoxDatasetLoader,EnglandCovidDatasetLoader,PedalMeDatasetLoader,WikiMathsDatasetLoader,PemsBayDatasetLoader,WindmillOutputLargeDatasetLoader,WindmillOutputSmallDatasetLoader,MTMDatasetLoader,WindmillOutputMediumDatasetLoader,METRLADatasetLoader,MontevideoBusDatasetLoader
 from torch_geometric_temporal.signal import temporal_signal_split,StaticGraphTemporalSignal
 from torch_geometric.utils import negative_sampling
 from  utils import *
 import torch.optim as optim
 from tqdm import tqdm
 from model import metaDynamicGCN
-from datasets import *
+from dataset import *
 def compute_space_loss(embedding, index_set, criterion_space):
     # embedding = torch.relu(embedding)
     pos_score = torch.sum(embedding[index_set[0]] * embedding[index_set[1]], dim=1)
@@ -36,6 +36,8 @@ def train (args, model, maml, optimizer, train_dataset, criterion_space, criteri
     for time, snapshot in enumerate(tqdm(train_dataset,ncols=100)):
 
         snapshot = snapshot.to(args.device)
+        # print(snapshot)
+        # dd
         embedding = model(snapshot)
         task_model = maml.clone()
         query_space_loss, query_temporal_loss =0.0,0.0
@@ -83,6 +85,8 @@ def main(args):
         loader = PedalMeDatasetLoader()
     elif args.dataset == 'WikiMaths':
         loader = WikiMathsDatasetLoader()
+    elif args.dataset == 'WindmillOutputLarge':
+        loader = MontevideoBusDatasetLoader()
 
     dataset = loader.get_dataset()
     train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=args.train_ratio)
@@ -118,8 +122,8 @@ if __name__ == '__main__':
     parser.add_argument("--num_workers", default=0, type=int, required=False, help="num of workers")
 
     parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-    parser.add_argument('--dataset', type=str, default='EnglandCovid', help='dataset.')
-    parser.add_argument('--device', type=int, default=0, help='which gpu to use if any (default: 0)')
+    parser.add_argument('--dataset', type=str, default='WindmillOutputLarge', help='dataset.')
+    parser.add_argument('--device', type=int, default=1, help='which gpu to use if any (default: 0)')
     args = parser.parse_args()
     
     random.seed(args.seed)

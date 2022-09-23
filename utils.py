@@ -22,17 +22,17 @@ def task_construct(data,args):
     perm = np.random.randint(num_edges, size=num_sampled_edges)
     pos_edges = data.edge_index[:, perm]
 
-    x = 1 - 1.1 * (data.edge_index.size(1) / (num_nodes * num_nodes) )
+    # x = 1 - 1.1 * (data.edge_index.size(1) / (num_nodes * num_nodes) )
     
-    if x != 0:
-        alpha = 1 / (1 - 1.1 * (data.edge_index.size(1) / (num_nodes * num_nodes) ))
-    else:
-        alpha = 0
-    if alpha > 0:
-        neg_edges = negative_sampling(data.edge_index, num_nodes, num_sampled_edges)
-    else:
-        i, _, k = structured_negative_sampling(data.edge_index)
-        neg_edges = torch.stack((i,k), 0)
+    # if x != 0:
+    #     alpha = 1 / (1 - 1.1 * (data.edge_index.size(1) / (num_nodes * num_nodes) ))
+    # else:
+    #     alpha = 0
+    # if alpha > 0:
+    neg_edges = negative_sampling(data.edge_index, num_nodes, num_sampled_edges)
+    # else:
+    #     i, _, k = structured_negative_sampling(data.edge_index)
+    #     neg_edges = torch.stack((i,k), 0)
     cur_num_neg = neg_edges.shape[1]
     if cur_num_neg != num_sampled_edges:
         perm = np.random.randint(cur_num_neg, size=num_sampled_edges)
