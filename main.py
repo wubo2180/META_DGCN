@@ -26,7 +26,12 @@ def compute_temporal_loss(embedding, index_set, snapshot, criterion_temporal):
     y = snapshot.y[index_set]
     # embedding = torch.sigmoid(embedding[index_set]).reshape(-1)
     embedding = torch.relu(embedding[index_set]).reshape(-1)
+    print(embedding)
+    print(y)
+    print((embedding-y)**2)
     loss = criterion_temporal (embedding, y)
+    print(loss.item())
+    # dd
     return loss
 
 def train (args, model, maml, optimizer, train_dataset, criterion_space, criterion_temporal):

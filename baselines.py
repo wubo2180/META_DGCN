@@ -15,7 +15,10 @@ def eval(args,model,test_dataset):
     for time, snapshot in enumerate(test_dataset):
         snapshot = snapshot.to(args.device)
         y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
-        cost = cost + torch.mean((y_hat-snapshot.y)**2)
+        # print(y_hat-snapshot.y)
+        # print((y_hat-snapshot.y)**2)
+        # ss
+        cost = cost + torch.mean((y_hat-snapshot.y.reshape((-1,1)))**2)
     cost = cost / (time+1)
     cost = cost.item()
     print("MSE: {:.4f}".format(cost))
@@ -24,11 +27,11 @@ def train(args, model,train_dataset, optimizer):
     model.train()
     criterion = nn.MSELoss(reduction='mean')
     cost = 0
-    for time, snapshot in enumerate(tqdm(train_dataset)):
+    for time, snapshot in enumerate(train_dataset):
         snapshot = snapshot.to(args.device)
         y_hat = model(snapshot.x, snapshot.edge_index, snapshot.edge_attr)
         # cost += loss(y_hat,snapshot.y)
-        loss = criterion(y_hat,snapshot.y)
+        loss = criterion(y_hat,snapshot.y.reshape((-1,1)))
         cost += loss.item() 
         optimizer.zero_grad()
         loss.backward()
@@ -42,6 +45,10 @@ def main(args):
         loader = PedalMeDatasetLoader()
     elif args.dataset == 'WikiMaths':
         loader = MontevideoBusDatasetLoader()
+    elif args.dataset == 'WindmillOutputLarge':
+        loader = MontevideoBusDatasetLoader()
+    elif args.dataset == 'Chickenpox':
+        loader = ChickenpoxDatasetLoader()
     dataset = loader.get_dataset()
     for time, data in enumerate(dataset):
         args.input_dim, args.num_nodes = data.x.shape[1], data.x.shape[0]
@@ -67,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, help='dropout', default=0.5)
     parser.add_argument("--num_workers", default=0, type=int, required=False, help="num of workers")
     parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-    parser.add_argument('--dataset', type=str, default='WikiMaths', help='dataset.')
+    parser.add_argument('--dataset', type=str, default='Chickenpox', help='dataset.')
     parser.add_argument('--layer_mode', type=str, default='1', help='layer mode.')
     parser.add_argument('--device', type=int, default=0,help='which gpu to use if any (default: 0)')
     args = parser.parse_args()
