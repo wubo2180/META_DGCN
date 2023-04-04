@@ -49,7 +49,7 @@ def train (args, model, maml, optimizer, train_dataset, criterion_space, criteri
         
         space_suppport_set = snapshot.pos_sup_edge_index
         space_query_set = snapshot.neg_sup_edge_index
-        temporal_suppport_set = snapshot.temporal_que_index
+        temporal_suppport_set = snapshot.temporal_sup_index
         temporal_query_set = snapshot.temporal_que_index
         
         for i in range(args.update_sapce_step):
